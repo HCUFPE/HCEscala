@@ -106,3 +106,7 @@ yarn-error.log*
 
 # Gemini-specific files
 GEMINI.md
+
+# Backups e pacotes de deploy
+backups/
+*.tar.gz

@@ -1,0 +1,17 @@
+[Unit]
+Description=HC Escalas — Sistema de Gestão de Escalas de Serviço do Hospital das Clínicas da UFPE (FastAPI + Vue 3)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/appgrade
+ExecStart=/opt/appgrade/.venv/bin/uvicorn src.main:app --host 0.0.0.0 --port 8080 --workers 4
+Restart=always
+RestartSec=5
+Environment="ENV=production"
+Environment="PORT=8080"
+EnvironmentFile=-/opt/appgrade/.env
+
+[Install]
+WantedBy=multi-user.target

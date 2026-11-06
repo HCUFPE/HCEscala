@@ -14,12 +14,23 @@ interface User {
 
 export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref(localStorage.getItem('accessToken') || null);
-  const user = ref<User | null>(null);
+  
+  // Recupera dados do usuário salvos no localStorage (se houver)
+  const savedUser = localStorage.getItem('authUser');
+  let initialUser: User | null = null;
+  if (savedUser) {
+    try {
+      initialUser = JSON.parse(savedUser);
+    } catch {
+      initialUser = null;
+    }
+  }
+  const user = ref<User | null>(initialUser);
 
   const isAuthenticated = computed(() => !!accessToken.value);
   const isAdmin = computed(() => {
     const ADMIN_GROUP = "GLO-SEC-HCPE-SETISD"; 
-    return user.value?.groups?.includes(ADMIN_GROUP) || false;
+    return user.value?.groups?.includes(ADMIN_GROUP) || user.value?.username === "admin" || false;
   });
 
   function setToken(token: string) {
@@ -30,11 +41,17 @@ export const useAuthStore = defineStore('auth', () => {
   function clearToken() {
     accessToken.value = null;
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('authUser');
     user.value = null;
   }
 
   function setUser(userData: User | null) {
     user.value = userData;
+    if (userData) {
+      localStorage.setItem('authUser', JSON.stringify(userData));
+    } else {
+      localStorage.removeItem('authUser');
+    }
   }
 
   async function fetchUser() {

@@ -26,6 +26,19 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 from src.resources.database import Base
+from src.models.refresh_token import RefreshToken
+from src.models.legenda import Legenda
+from src.models.funcionario import Funcionario
+from src.models.funcionario_lotacao import FuncionarioLotacao
+from src.models.funcionario_ferias import FuncionarioFerias
+from src.models.cargo import Cargo
+from src.models.escala import Escala
+from src.models.unidade import Unidade
+from src.models.posto import Posto
+from src.models.setor import Setor
+from src.models.vinculo import Vinculo
+from src.models.feriado import Feriado
+from src.models.grade import Grade, GradeDia
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -88,6 +101,7 @@ async def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
         future=True,
+        isolation_level="AUTOCOMMIT",
     ))
 
     async with connectable.connect() as connection:

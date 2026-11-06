@@ -1,50 +1,75 @@
-# Sistema de Autenticação
+# Sistema de Autenticação e Controle de Acesso (HC Escalas)
 
-O framework implementa um sistema de autenticação híbrido e robusto, projetado para funcionar tanto em um ambiente corporativo com Active Directory (AD) quanto em um ambiente de desenvolvimento local sem acesso à rede.
+Este documento descreve o funcionamento do sistema de autenticação, geração de tokens JWT e controle de acesso baseado em papéis e escopo organizacional do **HC Escalas**.
 
-## Estratégia de Autenticação Dupla
+---
 
-O sistema utiliza um padrão de provedor para a lógica de autenticação, permitindo alternar entre dois modos:
+## 1. Modos de Autenticação
 
-1.  **ActiveDirectoryAuthProvider**: O provedor padrão para produção. Ele se conecta a um servidor LDAP para validar as credenciais do usuário e buscar suas informações e grupos de acesso.
+O sistema conta com estratégia de autenticação híbrida:
 
-2.  **MockAuthProvider**: Um provedor para desenvolvimento offline. Ele não requer conexão de rede e simula a autenticação, permitindo que desenvolvedores testem rotas protegidas e funcionalidades de diferentes níveis de acesso.
+### 1.1. Modo Produção: Active Directory (LDAP)
+Conecta-se ao servidor de domínio corporativo da EBSERH/HC-UFPE para validação de credenciais via *Simple Bind* seguro:
+- **Variáveis de Ambiente Necessárias:**
+  - `AD_URL`: URL do servidor LDAP (ex: `ldap://ad.domain.local` ou `ldaps://ad.domain.local`).
+  - `AD_BASEDN`: Base DN para busca de contas e grupos (ex: `DC=ebserhnet,DC=gov,DC=br`).
+  - `AD_BIND_USER` e `AD_BIND_PASSWORD`: Credenciais do usuário de serviço (opcional).
 
-## Seleção Automática do Provedor
+### 1.2. Modo Desenvolvimento: Mock Auth
+Ativado automaticamente quando a variável `AD_URL` não estiver definida no arquivo `.env`. Permite trabalhar offline com dados e permissões completas de teste.
+- **Credenciais de Teste:**
+  - **Usuário:** `admin`
+  - **Senha:** `admin`
+  - **Grupos Injetados:** Concede o grupo de administração de TI (`GLO-SEC-HCPE-SETISD`) e perfil de `DIVGP.`, permitindo acesso total a todas as rotas e funções do sistema.
 
-A escolha entre o provedor `ActiveDirectory` e o `Mock` é feita automaticamente na inicialização da aplicação, com base na presença de variáveis de ambiente.
+---
 
--   **Para ativar a autenticação com Active Directory:**
-    -   Descomente e preencha as variáveis de ambiente relacionadas ao AD no seu arquivo `.env`. No mínimo, a variável `AD_URL` deve estar presente.
-    ```env
-    # .env
-    AD_URL="ldap://seu-servidor-ad:389"
-    AD_BASEDN="dc=sua-empresa,dc=com"
-    # ... outras variáveis de AD
-    ```
-    Ao iniciar, a aplicação detectará `AD_URL` e utilizará o `ActiveDirectoryAuthProvider`.
+## 2. Fluxo de Sessão e Tokens JWT
 
--   **Para ativar a autenticação Mock (offline):**
-    -   Comente ou remova as variáveis de ambiente do AD do seu arquivo `.env`.
-    ```env
-    # .env
-    # AD_URL="ldap://seu-servidor-ad:389"
-    # AD_BASEDN="dc=sua-empresa,dc=com"
-    ```
-    Ao iniciar, a aplicação não encontrará `AD_URL` e, por segurança, utilizará o `MockAuthProvider`. Uma mensagem de aviso será exibida no console.
+1. **Login (`POST /api/auth/login`):**
+   - Recebe `username` e `password`.
+   - Autentica no AD/LDAP ou via Mock.
+   - Em caso de sucesso, gera um **Access Token JWT** assinado com o segredo `JWT_SECRET`.
+   - Gera um **Refresh Token** de longa duração gravado com flag `HttpOnly` em cookie seguro.
 
-### Credenciais do Provedor Mock
+2. **Autorização nas Requisições:**
+   - O cliente frontend envia o cabeçalho `Authorization: Bearer <token>` em todas as chamadas à API via interceptor do Axios (`frontend/src/services/api.ts`).
+   - O middleware `auth_handler.decode_token` valida a assinatura e expiração do token.
 
-Quando o `MockAuthProvider` está ativo, você pode se autenticar com as seguintes credenciais:
+3. **Renovação Transparente (`POST /api/auth/refresh`):**
+   - Caso o Access Token expire, o frontend utiliza o Refresh Token para obter um novo token sem desconectar o usuário.
 
--   **Usuário:** `admin`
--   **Senha:** `admin`
+---
 
-Este usuário receberá um conjunto de grupos pré-definidos, incluindo o grupo de administrador (`GLO-SEC-HCPE-SETISD`), permitindo testar todas as funcionalidades restritas do frontend.
+## 3. Matriz de Perfis e Permissões (4 Papéis + Usuário Final)
 
-## Fluxo de Tokens (JWT)
+| Perfil / Papel | Critério de Detecção | Permissões no Sistema |
+| :--- | :--- | :--- |
+| **1. Supervisor de Posto de Serviço** | Usuário cadastrado no nível `POSTO` | • Elabora manualmente ou copia escalas dos colaboradores do seu posto (ou múltiplos postos).<br>• Status inicial da escala: **⚪ Em Elaboração**.<br>• Submete para a chefia da unidade através da ação **"Aprovar para Unidade"**. |
+| **2. Gerente da Unidade** | Usuário cadastrado no nível `UORG` / Unidade | • Valida as escalas de todos os postos de sua unidade.<br>• Se encontrar divergências: **"Devolver para Correção do Chefe do Posto"**.<br>• Estando tudo correto: **"Enviar para DIVGP"** para homologação final. |
+| **3. Gerente da DIVGP** | Usuário com nível `DIVGP_ADMIN` ou grupo AD `DIVGP` | • Valida e homologa as escalas recebidas de todas as unidades hospitalares.<br>• Publica a escala (**🟢 Publicada**), oficializando-a para visualização do usuário final e bloqueando edições.<br>• Pode devolver para a unidade caso identifique inconformidades. |
+| **4. Administrador do Sistema** | Usuário `admin` ou grupo AD `GLO-SEC-HCPE-SETISD` | • Acesso irrestrito a todas as funcionalidades do sistema (UORGs, postos, funcionários, atribuição de chefias/gerências, legendas, auditoria, cadastros, reabertura de escalas). |
+| **Usuário Final / Consulta Geral** | Colaboradores autenticados sem função de gestão | • Visualização das escalas **publicadas** para consulta de seus plantões e horários de trabalho (sem permissão de edição). |
 
-Independentemente do provedor utilizado, após a autenticação bem-sucedida, o sistema gera um **Access Token (JWT)** e um **Refresh Token**.
+---
 
--   **Access Token**: É um token de curta duração (configurável via `JWT_EXP_HOURS`) que é enviado em cada requisição à API para autorizar o acesso.
--   **Refresh Token**: É um token de longa duração (configurável via `REFRESH_TOKEN_EXP_DAYS`) armazenado em um cookie `HttpOnly`. Ele é usado para obter um novo Access Token sem que o usuário precise fazer login novamente.
+## 4. Escopo Hierárquico de Unidades Organizacionais
+
+O endpoint `GET /api/gerencias/meu-escopo` (ou `GET /api/gerencias/me`) retorna dinamicamente a árvore de UORGs e postos permitidos para o usuário conectado:
+- **Administrador ou Gerente da DIVGP:** `uorg_ids = null` e `posto_ids = null` (significa acesso global irrestrito a todo o hospital).
+- **Gerente de Unidade:** `uorg_ids = [id1, id2, ...]` (inclui a unidade gerenciada e recursivamente todas as suas subordinadas em cascata).
+- **Supervisor de Posto:** `posto_ids = [p1, p2, ...]` e `uorg_ids = [u1, ...]` (restrito exclusivamente aos postos de serviço sob sua responsabilidade).
+- **Usuário Final / Colaborador:** visualiza apenas escalas já oficializadas e publicadas.
+- O dropdown de seleção de unidades na Grade filtra automaticamente para exibir apenas o escopo autorizado ao usuário logado.
+
+---
+
+## 5. Login Obrigatório Global e Persistência de Sessão
+
+- **Obrigatoriedade de Autenticação:**
+  - Todas as páginas e recursos da aplicação são protegidos contra acesso anônimo via `router.beforeEach`.
+  - Ao entrar em qualquer URL sem credenciais ativas, o sistema redireciona automaticamente para `/login?redirect={url}`, garantindo retorno fluido à página desejada após o login.
+- **Persistência de Dados e Sessão:**
+  - O token JWT (`accessToken`) e o objeto do usuário logado (`authUser`) são armazenados no `localStorage` do navegador.
+  - O usuário permanece autenticado durante toda a navegação, permitindo alternar abas ou atualizar a página (F5) sem interrupções.
+  - Ao executar o Logout, todos os dados salvos em cache e cookies de sessão são purgados imediatamente.

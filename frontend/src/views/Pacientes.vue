@@ -64,12 +64,18 @@ import api from '../services/api';
 import Card from '../components/Card.vue';
 import DataTable from '../components/DataTable.vue';
 import Button from '../components/Button.vue';
+import { useSearchFilterState } from '../composables/useSearchFilterState';
 
 const toast = useToast();
 
-const pacienteCodigoInput = ref(null);
+const pacienteCodigoInput = ref<number | string | null>(null);
 const loadingPaciente = ref(false);
 const pacienteDetalhe = ref<any | null>(null);
+
+// Persistência automática do último código de paciente pesquisado
+useSearchFilterState('pacientes', {
+  pacienteCodigoInput
+});
 
 const headers = ref([
   { text: 'Prontuário', value: 'codigo' },
@@ -84,6 +90,9 @@ onMounted(async () => {
   try {
     const { data } = await api.get('/api/pacientes');
     pacientes.value = data;
+    if (pacienteCodigoInput.value) {
+      fetchPacientePorCodigo();
+    }
   } catch (error) {
     toast.error('Falha ao carregar a lista de pacientes.');
   }

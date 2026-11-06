@@ -3,38 +3,38 @@
 @theme {
   --font-family-sans: 'Nunito', sans-serif;
 
-  --color-paper-bg: #f4f3ef;
-  --color-paper-text: #66615b;
-  --color-paper-sidebar: #424242;
-  --color-paper-active-link: #5a5a5a; /* Light Gray for active link */
+  --color-paper-bg: #f4f5f7;
+  --color-paper-text: #5a6275;
+  --color-paper-sidebar: #1a3a5c;
+  --color-paper-active-link: #2a5c9e; /* Azul médio for active link */
 
   /* Default */
-  --color-paper-default: #66615b;
-  --color-paper-default-hover: #55504a;
+  --color-paper-default: #d4d8e0;
+  --color-paper-default-hover: #c1c5cd;
 
   /* Primary */
-  --color-paper-primary: #7a9e9f;
-  --color-paper-primary-hover: #6a8d8e;
+  --color-paper-primary: #2a5c9e;
+  --color-paper-primary-hover: #1a3a5c;
 
   /* Info */
-  --color-paper-info: #68b3c8;
-  --color-paper-info-hover: #58a2b7;
+  --color-paper-info: #e8f0fb;
+  --color-paper-info-hover: #c4d8ef;
 
   /* Success */
-  --color-paper-success: #7ac29a;
-  --color-paper-success-hover: #6ab189;
+  --color-paper-success: #0f6e56;
+  --color-paper-success-hover: #0a4d3c;
 
   /* Warning */
-  --color-paper-warning: #f3bb45;
-  --color-paper-warning-hover: #e2ac34;
+  --color-paper-warning: #b7950b;
+  --color-paper-warning-hover: #8c7308;
 
   /* Danger */
-  --color-paper-danger: #eb5e28;
-  --color-paper-danger-hover: #d95524;
+  --color-paper-danger: #c0392b;
+  --color-paper-danger-hover: #9b2e23;
 
-  --color-paper-disabled: #E0E0E0; /* Light Gray */
+  --color-paper-disabled: #d4d8e0; /* Cinza borda */
 
-  --shadow-paper: 0 2px 2px 0 rgba(204, 197, 185, 0.5);
+  --shadow-paper: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
 }
 
 @layer components {

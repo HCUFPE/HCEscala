@@ -2,7 +2,13 @@
   <div class="w-full max-w-md">
     <Card>
       <template #header>
-        <h1 class="text-xl font-semibold text-center">Login</h1>
+        <div class="flex flex-col items-center justify-center py-2 gap-1.5">
+          <div class="p-2.5 bg-paper-primary/10 rounded-2xl border border-paper-primary/20 text-paper-primary">
+            <CalendarDaysIcon class="h-8 w-8" />
+          </div>
+          <h1 class="text-2xl font-black text-gray-900 tracking-tight">HC Escalas</h1>
+          <p class="text-xs text-gray-500 font-medium text-center leading-tight">Sistema de Gestão de Escalas de Serviço do Hospital das Clínicas da UFPE</p>
+        </div>
       </template>
       <form @submit.prevent="handleLogin">
         <div class="mb-4">
@@ -53,11 +59,11 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import Card from '../components/Card.vue';
 import Button from '../components/Button.vue';
-import { ArrowRightOnRectangleIcon, EyeIcon, EyeSlashIcon, XCircleIcon } from '@heroicons/vue/24/outline';
+import { ArrowRightOnRectangleIcon, EyeIcon, EyeSlashIcon, XCircleIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline';
 
 const username = ref('');
 const password = ref('');
@@ -67,6 +73,7 @@ const loading = ref(false);
 const passwordVisible = ref(false);
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 
 const passwordFieldType = computed(() => passwordVisible.value ? 'text' : 'password');
@@ -87,7 +94,8 @@ const handleLogin = async () => {
   error.value = '';
   try {
     await authStore.login(username.value, password.value, rememberMe.value);
-    await router.push('/admin'); // Or wherever you want to redirect after login
+    const redirectPath = (route.query.redirect as string) || '/';
+    await router.push(redirectPath);
   } catch (e: any) {
     error.value = e.response?.data?.detail || e.message || 'An unknown error occurred';
   } finally {
